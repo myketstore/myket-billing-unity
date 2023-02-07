@@ -15,6 +15,12 @@
 
 package ir.myket.billingclient.util;
 
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +28,7 @@ import java.util.Map;
 
 
 public class Inventory {
+    protected static final String TAG = "[MyketIAB][Inventory]";
     Map<String, SkuDetails> mSkuMap = new HashMap<String, SkuDetails>();
     Map<String, Purchase> mPurchaseMap = new HashMap<String, Purchase>();
 
@@ -71,7 +78,7 @@ public class Inventory {
     /**
      * Returns a list of all owned product IDs.
      */
-    List<String> getAllOwnedSkus() {
+    public List<String> getAllOwnedSkus() {
         return new ArrayList<String>(mPurchaseMap.keySet());
     }
 
@@ -81,7 +88,8 @@ public class Inventory {
     public List<String> getAllOwnedSkus(String itemType) {
         List<String> result = new ArrayList<String>();
         for (Purchase p : mPurchaseMap.values()) {
-            if (p.getItemType().equals(itemType)) result.add(p.getSku());
+            if (p.getItemType().equals(itemType))
+                result.add(p.getSku());
         }
         return result;
     }
@@ -93,11 +101,8 @@ public class Inventory {
         return new ArrayList<Purchase>(mPurchaseMap.values());
     }
 
-    /**
-     * Returns a list of all products.
-     */
-    public List<SkuDetails> getAllProducts() {
-        return new ArrayList<SkuDetails>(mSkuMap.values());
+    public List<SkuDetails> getAllSkuDetails() {
+        return new ArrayList(mSkuMap.values());
     }
 
     public void addSkuDetails(SkuDetails d) {
@@ -106,5 +111,45 @@ public class Inventory {
 
     public void addPurchase(Purchase p) {
         mPurchaseMap.put(p.getSku(), p);
+    }
+
+    public JSONArray getAllSkusAsJson() {
+        try {
+            JSONArray json = new JSONArray();
+            for (SkuDetails skuDetails : mSkuMap.values()) {
+                json.put(new JSONObject(skuDetails.toJson()));
+            }
+            return json;
+        } catch (JSONException e) {
+            Log.i(TAG, "Error creating JSON from skus " + e.getMessage());
+        }
+        return new JSONArray();
+    }
+
+    public JSONArray getAllPurchasesAsJson() {
+        try {
+            JSONArray json = new JSONArray();
+            for (Purchase p : mPurchaseMap.values()) {
+                json.put(new JSONObject(p.toJson()));
+            }
+            return json;
+        } catch (JSONException e) {
+            Log.i(TAG, "Error creating JSON from Purchases " + e.getMessage());
+        }
+        return new JSONArray();
+    }
+
+    public String getAllSkusAndPurchasesAsJson() {
+        try {
+            JSONObject json = new JSONObject();
+
+            json.put("purchases", getAllPurchasesAsJson());
+            json.put("skus", getAllSkusAsJson());
+
+            return json.toString();
+        } catch (JSONException e) {
+            Log.i(TAG, "Error creating JSON from skus or Purchases " + e.getMessage());
+        }
+        return "{}";
     }
 }

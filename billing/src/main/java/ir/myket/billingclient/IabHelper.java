@@ -118,7 +118,6 @@ public class IabHelper {
     public static final String GET_SKU_DETAILS_ITEM_TYPE_LIST = "ITEM_TYPE_LIST";
     private static final String META_DATA_BIND_ADDRESS = "market_bind_address";
     private static final String META_DATA_MARKET_ID = "market_id";
-    private final IABLogger logger = new IABLogger();
     IAB iabConnection;
     // Has this object been disposed of? (If so, we should ignore callbacks, etc)
     boolean mDisposed = false;
@@ -143,7 +142,7 @@ public class IabHelper {
     public IabHelper(Context ctx, String base64PublicKey) {
         mContext = ctx.getApplicationContext();
         mSignatureBase64 = base64PublicKey;
-        logger.logDebug("IAB helper created.");
+        IABLogger.logDebug("IAB helper created.");
     }
 
     /**
@@ -184,13 +183,13 @@ public class IabHelper {
      */
     public void enableDebugLogging(boolean enable, String tag) {
         checkNotDisposed();
-        logger.mDebugLog = enable;
-        logger.mDebugTag = tag;
+        IABLogger.DEBUG = enable;
+        IABLogger.TAG = tag;
     }
 
     public void enableDebugLogging(boolean enable) {
         checkNotDisposed();
-        logger.mDebugLog = enable;
+        IABLogger.DEBUG = enable;
     }
 
     /**
@@ -207,14 +206,14 @@ public class IabHelper {
         if (iabConnection != null) {
             throw new IllegalStateException("IAB helper is already set up.");
         }
-        logger.logDebug("Starting in-app billing setup.");
+        IABLogger.logDebug("Starting in-app billing setup.");
 
         if (isMyketNotInstalled()) {
             listener.onIabSetupFinished(new IabResult(BILLING_RESPONSE_RESULT_OK, "Myket Not Installed"));
             return;
         }
 
-        ServiceIAB serviceIAB = new ServiceIAB(logger, getMarketId(mContext), getBindAddress(), mSignatureBase64);
+        ServiceIAB serviceIAB = new ServiceIAB(getMarketId(), getBindAddress(), mSignatureBase64);
 
         OnServiceConnectListener connectListener = new OnServiceConnectListener() {
             @Override
@@ -235,9 +234,9 @@ public class IabHelper {
     private void startAlternativeScenario(final OnIabSetupFinishedListener listener) {
         OnBroadCastConnectListener broadCastConnectListener = () -> checkBillingSupported(listener);
 
-        BroadcastIAB broadcastIAB = new BroadcastIAB(mContext, logger, getMarketId(mContext), getBindAddress(), mSignatureBase64);
+        BroadcastIAB broadcastIAB = new BroadcastIAB(mContext, getMarketId(), getBindAddress(), mSignatureBase64);
         boolean canConnectToReceiver = broadcastIAB.connect(mContext, broadCastConnectListener);
-        logger.logDebug("canConnectToReceiver = " + canConnectToReceiver);
+        IABLogger.logDebug("canConnectToReceiver = " + canConnectToReceiver);
         if (canConnectToReceiver) {
             iabConnection = broadcastIAB;
         } else {
@@ -324,7 +323,7 @@ public class IabHelper {
      * disposed of, it can't be used again.
      */
     public void dispose() {
-        logger.logDebug("Disposing.");
+        IABLogger.logDebug("Disposing.");
         if (iabConnection != null) {
             iabConnection.dispose(mContext);
         }
@@ -512,9 +511,9 @@ public class IabHelper {
         checkNotDisposed();
         checkSetupDone("consume");
 
-        if (!itemInfo.mItemType.equals(ITEM_TYPE_INAPP)) {
+        if (!itemInfo.getItemType().equals(ITEM_TYPE_INAPP)) {
             throw new IabException(IABHELPER_INVALID_CONSUMPTION,
-                    "Items of type '" + itemInfo.mItemType + "' can't be consumed.");
+                    "Items of type '" + itemInfo.getItemType() + "' can't be consumed.");
         }
 
         iabConnection.consume(mContext, itemInfo);
@@ -554,7 +553,7 @@ public class IabHelper {
             return;
         }
         if (iabConnection == null || !iabConnection.mSetupDone) {
-            logger.logError("Illegal state for operation (" + operation + "): IAB helper is not set up.");
+            IABLogger.logError("Illegal state for operation (" + operation + "): IAB helper is not set up.");
             throw new IllegalStateException(
                     "IAB helper is not set up. Can't perform operation: " + operation);
         }
@@ -573,20 +572,20 @@ public class IabHelper {
         String continueToken = null;
 
         do {
-            logger.logDebug("Calling getPurchases with continuation token: " + continueToken);
+            IABLogger.logDebug("Calling getPurchases with continuation token: " + continueToken);
             Bundle ownedItems = iabConnection.getPurchases(3, mContext.getPackageName(),
                     itemType, continueToken);
 
             int response = iabConnection.getResponseCodeFromBundle(ownedItems);
-            logger.logDebug("Owned items response: " + response);
+            IABLogger.logDebug("Owned items response: " + response);
             if (response != BILLING_RESPONSE_RESULT_OK) {
-                logger.logDebug("getPurchases() failed: " + getResponseDesc(response));
+                IABLogger.logDebug("getPurchases() failed: " + getResponseDesc(response));
                 return response;
             }
             if (!ownedItems.containsKey(RESPONSE_INAPP_ITEM_LIST)
                     || !ownedItems.containsKey(RESPONSE_INAPP_PURCHASE_DATA_LIST)
                     || !ownedItems.containsKey(RESPONSE_INAPP_SIGNATURE_LIST)) {
-                logger.logError("Bundle returned from getPurchases() doesn't contain required fields.");
+                IABLogger.logError("Bundle returned from getPurchases() doesn't contain required fields.");
                 return IABHELPER_BAD_RESPONSE;
             }
 
@@ -602,26 +601,26 @@ public class IabHelper {
                 String signature = signatureList.get(i);
                 String sku = ownedSkus.get(i);
                 if (Security.verifyPurchase(mSignatureBase64, purchaseData, signature)) {
-                    logger.logDebug("Sku is owned: " + sku);
+                    IABLogger.logDebug("Sku is owned: " + sku);
                     Purchase purchase = new Purchase(itemType, purchaseData, signature);
 
                     if (TextUtils.isEmpty(purchase.getToken())) {
-                        logger.logWarn("BUG: empty/null token!");
-                        logger.logDebug("Purchase data: " + purchaseData);
+                        IABLogger.logWarn("BUG: empty/null token!");
+                        IABLogger.logDebug("Purchase data: " + purchaseData);
                     }
 
                     // Record ownership and token
                     inv.addPurchase(purchase);
                 } else {
-                    logger.logWarn("Purchase signature verification **FAILED**. Not adding item.");
-                    logger.logDebug("   Purchase data: " + purchaseData);
-                    logger.logDebug("   Signature: " + signature);
+                    IABLogger.logWarn("Purchase signature verification **FAILED**. Not adding item.");
+                    IABLogger.logDebug("   Purchase data: " + purchaseData);
+                    IABLogger.logDebug("   Signature: " + signature);
                     verificationFailed = true;
                 }
             }
 
             continueToken = ownedItems.getString(INAPP_CONTINUATION_TOKEN);
-            logger.logDebug("Continuation token: " + continueToken);
+            IABLogger.logDebug("Continuation token: " + continueToken);
         } while (!TextUtils.isEmpty(continueToken));
 
         return verificationFailed ? IABHELPER_VERIFICATION_FAILED : BILLING_RESPONSE_RESULT_OK;
@@ -646,7 +645,7 @@ public class IabHelper {
         }
 
         if (skuList.size() == 0) {
-            logger.logDebug("queryPrices: nothing to do because there are no SKUs.");
+            IABLogger.logDebug("queryPrices: nothing to do because there are no SKUs.");
             return BILLING_RESPONSE_RESULT_OK;
         }
 
@@ -657,10 +656,10 @@ public class IabHelper {
         if (!skuDetails.containsKey(RESPONSE_GET_SKU_DETAILS_LIST)) {
             int responseCodeFromBundle = iabConnection.getResponseCodeFromBundle(skuDetails);
             if (responseCodeFromBundle != BILLING_RESPONSE_RESULT_OK) {
-                logger.logDebug("getSkuDetails() failed: " + getResponseDesc(responseCodeFromBundle));
+                IABLogger.logDebug("getSkuDetails() failed: " + getResponseDesc(responseCodeFromBundle));
                 return responseCodeFromBundle;
             } else {
-                logger.logError("getSkuDetails() returned a bundle with neither an error nor a detail list.");
+                IABLogger.logError("getSkuDetails() returned a bundle with neither an error nor a detail list.");
                 return IABHELPER_BAD_RESPONSE;
             }
         }
@@ -670,7 +669,7 @@ public class IabHelper {
 
         for (String thisResponse : responseList) {
             SkuDetails d = new SkuDetails(itemType, thisResponse);
-            logger.logDebug("Got sku details: " + d);
+            IABLogger.logDebug("Got sku details: " + d);
             inv.addSkuDetails(d);
         }
 
@@ -713,6 +712,102 @@ public class IabHelper {
                 }
             }
         })).start();
+    }
+
+    public void querySkuDetailsAsync(final List<String> skusItems,
+                                     final QuerySkuDetailsFinishedListener listener) {
+        final Handler handler = new Handler();
+        checkNotDisposed();
+        checkSetupDone("querySkuDetails");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                IabResult result = new IabResult(0, "SkuDetails refresh successful.");
+                final Inventory inv = new Inventory();
+                try {
+                    try {
+                        int r = querySkuDetails(ITEM_TYPE_INAPP, inv, skusItems);
+                        if (r != BILLING_RESPONSE_RESULT_OK) {
+                            throw new IabException(r,
+                                    "Error refreshing SkuDetails (querying prices of items).");
+                        }
+                        if (subscriptionsSupported()) {
+                            r = querySkuDetails(ITEM_TYPE_SUBS, inv, skusItems);
+                            if (r != BILLING_RESPONSE_RESULT_OK) {
+                                throw new IabException(r,
+                                        "Error refreshing SkuDetails (querying prices of subscriptions).");
+                            }
+                        }
+                    } catch (RemoteException e) {
+                        throw new IabException(IABHELPER_REMOTE_EXCEPTION,
+                                "Remote exception while refreshing SkuDetails.",
+                                (Exception) e);
+                    } catch (JSONException e2) {
+                        throw new IabException(IABHELPER_BAD_RESPONSE,
+                                "Error parsing JSON response while refreshing SkuDetails.", (Exception) e2);
+                    }
+                } catch (IabException ex) {
+                    result = ex.getResult();
+                }
+                final IabResult result_f = result;
+                final Inventory inv_f = inv;
+                if (!mDisposed && listener != null) {
+                    handler.post((Runnable) new Runnable() {
+                        @Override
+                        public void run() {
+                            listener.onQuerySkuDetailsFinished(result_f, inv_f);
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    public void queryPurchasesAsync(final QueryPurchasesFinishedListener listener) {
+        final Handler handler = new Handler();
+        checkNotDisposed();
+        checkSetupDone("queryPurchases");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                IabResult result = new IabResult(BILLING_RESPONSE_RESULT_OK, "Purchases refresh successful.");
+                final Inventory inv = new Inventory();
+                try {
+                    try {
+                        int r = queryPurchases(inv, ITEM_TYPE_INAPP);
+                        if (r != BILLING_RESPONSE_RESULT_OK) {
+                            throw new IabException(r, "Error refreshing inventory (querying owned items).");
+                        }
+                        if (subscriptionsSupported()) {
+                            r = queryPurchases(inv, ITEM_TYPE_SUBS);
+                            if (r != BILLING_RESPONSE_RESULT_OK) {
+                                throw new IabException(r,
+                                        "Error refreshing inventory (querying owned subscriptions).");
+                            }
+                        }
+                    } catch (RemoteException e) {
+                        throw new IabException(IABHELPER_REMOTE_EXCEPTION,
+                                "Remote exception while refreshing Purchases.",
+                                (Exception) e);
+                    } catch (JSONException e2) {
+                        throw new IabException(IABHELPER_BAD_RESPONSE,
+                                "Error parsing JSON response while refreshing Purchases.", (Exception) e2);
+                    }
+                } catch (IabException ex) {
+                    result = ex.getResult();
+                }
+                final IabResult result_f = result;
+                final Inventory inv_f = inv;
+                if (!mDisposed && listener != null) {
+                    handler.post((Runnable) new Runnable() {
+                        @Override
+                        public void run() {
+                            listener.onQueryPurchasesFinished(result_f, inv_f);
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 
     /**
@@ -784,5 +879,13 @@ public class IabHelper {
          *                  sku.
          */
         public void onConsumeMultiFinished(List<Purchase> purchases, List<IabResult> results);
+    }
+
+    public interface QuerySkuDetailsFinishedListener {
+        void onQuerySkuDetailsFinished(final IabResult iabResult, final Inventory inventory);
+    }
+
+    public interface QueryPurchasesFinishedListener {
+        void onQueryPurchasesFinished(final IabResult iabResult, final Inventory inventory);
     }
 }

@@ -3,21 +3,44 @@ package ir.myket.billingclient.util;
 import android.util.Log;
 
 public class IABLogger {
+	public static String TAG = "[MyketIAB]";
+	public static boolean DEBUG = false;
 
-    public boolean mDebugLog = false;
-    public String mDebugTag = "IabHelper";
+	public static void logDebug(String log) {
+		if (DEBUG)
+			Log.i(TAG, log);
+	}
 
-    public void logDebug(String msg) {
-        if (mDebugLog) {
-            Log.d(mDebugTag, msg);
-        }
-    }
+	public static void logError(String log) {
+		if (DEBUG)
+			Log.e(TAG, log);
+	}
 
-    public void logError(String msg) {
-        Log.e(mDebugTag, "In-app billing error: " + msg);
-    }
+	public static void logWarn(String log) {
+		if (DEBUG)
+			Log.w(TAG, log);
+	}
 
-    public void logWarn(String msg) {
-        Log.w(mDebugTag, "In-app billing warning: " + msg);
-    }
+	public static void logEntering(String className, String methodName) {
+		if (DEBUG)
+			Log.i(TAG, className + "." + methodName + "()");
+	}
+
+	public static void logEntering(String className, String methodName, Object param) {
+		if (DEBUG)
+			Log.i(TAG, className + "." + methodName + "( " + param + " )");
+	}
+
+	public static void logEntering(String className, String methodName, Object[] params) {
+		if (DEBUG) {
+			String prefix = "";
+			StringBuilder b = new StringBuilder();
+			for (Object p : params) {
+				b.append(prefix);
+				b.append(p);
+				prefix = ", ";
+			}
+			Log.i(TAG, className + "." + methodName + "( " + b.toString() + " )");
+		}
+	}
 }

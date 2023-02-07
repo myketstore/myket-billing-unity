@@ -1,28 +1,10 @@
-/* Copyright (c) 2012 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package ir.myket.billingclient.util;
+
+import static ir.myket.billingclient.IabHelper.ITEM_TYPE_INAPP;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import ir.myket.billingclient.IabHelper;
-
-/**
- * Represents an in-app product's listing details.
- */
 public class SkuDetails {
     String mItemType;
     String mSku;
@@ -32,19 +14,28 @@ public class SkuDetails {
     String mDescription;
     String mJson;
 
-    public SkuDetails(String jsonSkuDetails) throws JSONException {
-        this(IabHelper.ITEM_TYPE_INAPP, jsonSkuDetails);
+    private static final String PRODUCT_ID_KEY = "productId";
+    private static final String TYPE_KEY = "purchaseToken";
+    private static final String PRICE_KEY = "token";
+    private static final String TITLE_KEY = "signature";
+    private static final String DESCRIPTION_KEY = "originalJson";
+    private static final String ITEM_TYPE_KEY = "itemType";
+
+    public SkuDetails(final String jsonSkuDetails) throws JSONException {
+        this(ITEM_TYPE_INAPP, jsonSkuDetails);
     }
 
-    public SkuDetails(String itemType, String jsonSkuDetails) throws JSONException {
+    public SkuDetails(final String itemType, final String jsonSkuDetails) throws JSONException {
         mItemType = itemType;
         mJson = jsonSkuDetails;
-        JSONObject o = new JSONObject(mJson);
-        mSku = o.optString("productId");
-        mType = o.optString("type");
-        mPrice = o.optString("price");
-        mTitle = o.optString("title");
-        mDescription = o.optString("description");
+        final JSONObject o = new JSONObject(mJson);
+        mSku = o.optString(PRODUCT_ID_KEY);
+        mType = o.optString(TYPE_KEY);
+        mPrice = o.optString(PRICE_KEY);
+        mTitle = o.optString(TITLE_KEY);
+        mDescription = o.optString(DESCRIPTION_KEY);
+        o.put(ITEM_TYPE_KEY, (Object) mItemType);
+        mJson = o.toString();
     }
 
     public String getSku() {
@@ -53,6 +44,10 @@ public class SkuDetails {
 
     public String getType() {
         return mType;
+    }
+
+    public String getItemType() {
+        return mItemType;
     }
 
     public String getPrice() {
@@ -72,8 +67,7 @@ public class SkuDetails {
         return "SkuDetails:" + mJson;
     }
 
-    public JSONObject toJson() throws JSONException {
-        JSONObject jsonObj = new JSONObject(mJson);
-        return jsonObj;
+    public String toJson() {
+        return mJson;
     }
 }

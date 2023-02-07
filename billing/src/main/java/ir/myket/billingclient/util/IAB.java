@@ -26,7 +26,6 @@ import org.json.JSONException;
 import ir.myket.billingclient.BuildConfig;
 import ir.myket.billingclient.IabHelper;
 import ir.myket.billingclient.util.communication.BillingSupportCommunication;
-import ir.myket.billingclient.util.communication.OnBroadCastConnectListener;
 
 public abstract class IAB {
     public final static int SDK_VERSION = BuildConfig.SDK_VERSION;
@@ -38,7 +37,6 @@ public abstract class IAB {
     public boolean mSetupDone = false;
     protected String bindAddress;
     protected String marketId;
-    IABLogger logger;
     int apiVersion = 3;
     // The item type of the current purchase flow
     String mPurchasingItemType;
@@ -55,7 +53,7 @@ public abstract class IAB {
             Intent data = purchaseResult.getParcelable(PURCHASE_RESULT);
 
             if (data == null) {
-                logger.logError("Null data in IAB activity result.");
+                IABLogger.logError("Null data in IAB activity result.");
                 result = new IabResult(IABHELPER_BAD_RESPONSE, "Null data in IAB result");
                 if (mPurchaseListener != null) {
                     mPurchaseListener.onIabPurchaseFinished(result, null);
@@ -68,15 +66,15 @@ public abstract class IAB {
             String dataSignature = data.getStringExtra(RESPONSE_INAPP_SIGNATURE);
 
             if (resultCode == Activity.RESULT_OK && responseCode == BILLING_RESPONSE_RESULT_OK) {
-                logger.logDebug("Successful resultCode from purchase activity.");
-                logger.logDebug("Purchase data: " + purchaseData);
-                logger.logDebug("Data signature: " + dataSignature);
-                logger.logDebug("Extras: " + data.getExtras());
-                logger.logDebug("Expected item type: " + mPurchasingItemType);
+                IABLogger.logDebug("Successful resultCode from purchase activity.");
+                IABLogger.logDebug("Purchase data: " + purchaseData);
+                IABLogger.logDebug("Data signature: " + dataSignature);
+                IABLogger.logDebug("Extras: " + data.getExtras());
+                IABLogger.logDebug("Expected item type: " + mPurchasingItemType);
 
                 if (purchaseData == null || dataSignature == null) {
-                    logger.logError("BUG: either purchaseData or dataSignature is null.");
-                    logger.logDebug("Extras: " + data.getExtras().toString());
+                    IABLogger.logError("BUG: either purchaseData or dataSignature is null.");
+                    IABLogger.logDebug("Extras: " + data.getExtras().toString());
                     result = new IabResult(IABHELPER_UNKNOWN_ERROR,
                             "IAB returned null purchaseData or dataSignature");
                     if (mPurchaseListener != null) {
@@ -92,7 +90,7 @@ public abstract class IAB {
 
                     // Verify signature
                     if (!Security.verifyPurchase(mSignatureBase64, purchaseData, dataSignature)) {
-                        logger.logError("Purchase signature verification FAILED for sku " + sku);
+                        IABLogger.logError("Purchase signature verification FAILED for sku " + sku);
                         result = new IabResult(IABHELPER_VERIFICATION_FAILED,
                                 "Signature verification failed for sku " + sku);
                         if (mPurchaseListener != null) {
@@ -101,9 +99,9 @@ public abstract class IAB {
                         return;
                     }
 
-                    logger.logDebug("Purchase signature successfully verified.");
+                    IABLogger.logDebug("Purchase signature successfully verified.");
                 } catch (JSONException e) {
-                    logger.logError("Failed to parse purchase data.");
+                    IABLogger.logError("Failed to parse purchase data.");
                     e.printStackTrace();
                     result = new IabResult(IABHELPER_BAD_RESPONSE, "Failed to parse purchase data.");
                     if (mPurchaseListener != null) {
@@ -119,20 +117,20 @@ public abstract class IAB {
                 }
             } else if (resultCode == Activity.RESULT_OK) {
                 // result code was OK, but in-app billing response was not OK.
-                logger.logDebug("Result code was OK but in-app billing response was not OK: " +
+                IABLogger.logDebug("Result code was OK but in-app billing response was not OK: " +
                         getResponseDesc(responseCode));
                 if (mPurchaseListener != null) {
                     result = new IabResult(responseCode, "Problem purchasing item.");
                     mPurchaseListener.onIabPurchaseFinished(result, null);
                 }
             } else if (resultCode == Activity.RESULT_CANCELED) {
-                logger.logDebug("Purchase canceled - Response: " + getResponseDesc(responseCode));
+                IABLogger.logDebug("Purchase canceled - Response: " + getResponseDesc(responseCode));
                 result = new IabResult(IABHELPER_USER_CANCELLED, "User canceled.");
                 if (mPurchaseListener != null) {
                     mPurchaseListener.onIabPurchaseFinished(result, null);
                 }
             } else {
-                logger.logError("Purchase failed. Result code: " + resultCode
+                IABLogger.logError("Purchase failed. Result code: " + resultCode
                         + ". Response: " + getResponseDesc(responseCode));
                 result = new IabResult(IABHELPER_UNKNOWN_PURCHASE_RESPONSE, "Unknown purchase response.");
                 if (mPurchaseListener != null) {
@@ -143,8 +141,7 @@ public abstract class IAB {
     };
     boolean mDisposed = false;
 
-    public IAB(IABLogger logger, String marketId, String bindAddress, String mSignatureBase64) {
-        this.logger = logger;
+    public IAB(String marketId, String bindAddress, String mSignatureBase64) {
         this.marketId = marketId;
         this.bindAddress = bindAddress;
         this.mSignatureBase64 = mSignatureBase64;
@@ -153,15 +150,15 @@ public abstract class IAB {
     public int getResponseCodeFromBundle(Bundle b) {
         Object o = b.get(RESPONSE_CODE);
         if (o == null) {
-            logger.logDebug("Bundle with null response code, assuming OK (known issue)");
+            IABLogger.logDebug("Bundle with null response code, assuming OK (known issue)");
             return BILLING_RESPONSE_RESULT_OK;
         } else if (o instanceof Integer) {
             return ((Integer) o).intValue();
         } else if (o instanceof Long) {
             return (int) ((Long) o).longValue();
         } else {
-            logger.logError("Unexpected type for bundle response code.");
-            logger.logError(o.getClass().getName());
+            IABLogger.logError("Unexpected type for bundle response code.");
+            IABLogger.logError(o.getClass().getName());
             throw new RuntimeException("Unexpected type for bundle response code: " + o.getClass().getName());
         }
     }
@@ -170,15 +167,15 @@ public abstract class IAB {
     int getResponseCodeFromIntent(Intent i) {
         Object o = i.getExtras().get(RESPONSE_CODE);
         if (o == null) {
-            logger.logError("Intent with no response code, assuming OK (known issue)");
+            IABLogger.logError("Intent with no response code, assuming OK (known issue)");
             return BILLING_RESPONSE_RESULT_OK;
         } else if (o instanceof Integer) {
             return ((Integer) o).intValue();
         } else if (o instanceof Long) {
             return (int) ((Long) o).longValue();
         } else {
-            logger.logError("Unexpected type for intent response code.");
-            logger.logError(o.getClass().getName());
+            IABLogger.logError("Unexpected type for intent response code.");
+            IABLogger.logError(o.getClass().getName());
             throw new RuntimeException("Unexpected type for intent response code: " + o.getClass().getName());
         }
     }

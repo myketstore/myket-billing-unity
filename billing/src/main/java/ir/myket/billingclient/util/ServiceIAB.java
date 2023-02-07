@@ -48,22 +48,22 @@ public class ServiceIAB extends IAB {
     // if mAsyncInProgress == true, what asynchronous operation is in progress?
     private String mAsyncOperation = "";
 
-    public ServiceIAB(IABLogger logger, String packageName, String bindAddress, String mSignatureBase64) {
-        super(logger, packageName, bindAddress, mSignatureBase64);
+    public ServiceIAB(String packageName, String bindAddress, String mSignatureBase64) {
+        super(packageName, bindAddress, mSignatureBase64);
     }
 
     public void connect(Context context, final OnServiceConnectListener listener) {
-        logger.logDebug("Starting in-app billing setup.");
+        IABLogger.logDebug("Starting in-app billing setup.");
         mServiceConn = new ServiceConnection() {
             @Override
             public void onServiceDisconnected(final ComponentName name) {
-                logger.logDebug("Billing service disconnected.");
+                IABLogger.logDebug("Billing service disconnected.");
                 mService = null;
             }
 
             @Override
             public void onServiceConnected(final ComponentName name, final IBinder service) {
-                logger.logDebug("Billing service connected.");
+                IABLogger.logDebug("Billing service connected.");
                 if (disposed()) {
                     return;
                 }
@@ -95,11 +95,11 @@ public class ServiceIAB extends IAB {
                     listener.couldNotConnect();
                 }
             } catch (Exception e) {
-                logger.logDebug("Billing service can't connect. result = false");
+                IABLogger.logError("Billing service can't connect. result = false error = " + e.toString());
                 listener.couldNotConnect();
             }
         } else {
-            logger.logDebug("Billing service can't connect. result = false");
+            IABLogger.logDebug("Billing service can't connect. result = false");
             listener.couldNotConnect();
         }
     }
@@ -108,7 +108,7 @@ public class ServiceIAB extends IAB {
     public void isBillingSupported(int apiVersion, String packageName,
                                    BillingSupportCommunication communication) {
         try {
-            logger.logDebug("Checking for in-app billing 3 support.");
+            IABLogger.logDebug("Checking for in-app billing 3 support.");
 
             // check for in-app billing v3 support
             int response = mService.isBillingSupported(apiVersion, packageName, ITEM_TYPE_INAPP);
@@ -117,15 +117,15 @@ public class ServiceIAB extends IAB {
                 communication.onBillingSupportResult(response);
                 return;
             }
-            logger.logDebug("In-app billing version 3 supported for " + packageName);
+            IABLogger.logDebug("In-app billing version 3 supported for " + packageName);
 
             // check for v3 subscriptions support
             response = mService.isBillingSupported(apiVersion, packageName, ITEM_TYPE_SUBS);
             if (response == BILLING_RESPONSE_RESULT_OK) {
-                logger.logDebug("Subscriptions AVAILABLE.");
+                IABLogger.logDebug("Subscriptions AVAILABLE.");
                 mSubscriptionsSupported = true;
             } else {
-                logger.logDebug("Subscriptions NOT AVAILABLE. Response: " + response);
+                IABLogger.logDebug("Subscriptions NOT AVAILABLE. Response: " + response);
             }
 
             communication.onBillingSupportResult(BILLING_RESPONSE_RESULT_OK);
@@ -155,18 +155,18 @@ public class ServiceIAB extends IAB {
         }
 
         try {
-            logger.logDebug("Constructing buy intent for " + sku + ", item type: " + itemType);
+            IABLogger.logDebug("Constructing buy intent for " + sku + ", item type: " + itemType);
 
             Bundle configBundle = mService.getPurchaseConfig(apiVersion);
             if (configBundle != null && configBundle.getBoolean(INTENT_V2_SUPPORT)) {
-                logger.logDebug("launchBuyIntentV2 for " + sku + ", item type: " + itemType);
+                IABLogger.logDebug("launchBuyIntentV2 for " + sku + ", item type: " + itemType);
                 launchBuyIntentV2(mContext, act, sku, itemType, listener, extraData);
             } else {
-                logger.logDebug("launchBuyIntent for " + sku + ", item type: " + itemType);
+                IABLogger.logDebug("launchBuyIntent for " + sku + ", item type: " + itemType);
                 launchBuyIntent(mContext, act, sku, itemType, listener, extraData);
             }
         } catch (IntentSender.SendIntentException e) {
-            logger.logError("SendIntentException while launching purchase flow for sku " + sku);
+            IABLogger.logError("SendIntentException while launching purchase flow for sku " + sku);
             e.printStackTrace();
             flagEndAsync();
 
@@ -175,7 +175,7 @@ public class ServiceIAB extends IAB {
                 listener.onIabPurchaseFinished(result, null);
             }
         } catch (RemoteException e) {
-            logger.logError("RemoteException while launching purchase flow for sku " + sku);
+            IABLogger.logError("RemoteException while launching purchase flow for sku " + sku);
             e.printStackTrace();
             flagEndAsync();
 
@@ -201,7 +201,7 @@ public class ServiceIAB extends IAB {
         Bundle buyIntentBundle = mService.getBuyIntentV2(apiVersion, packageName, sku, itemType, extraData);
         int response = getResponseCodeFromBundle(buyIntentBundle);
         if (response != BILLING_RESPONSE_RESULT_OK) {
-            logger.logError("Unable to buy item, Error response: " + getResponseDesc(response));
+            IABLogger.logError("Unable to buy item, Error response: " + getResponseDesc(response));
             flagEndAsync();
             IabResult result = new IabResult(response, "Unable to buy item");
             if (listener != null) {
@@ -211,7 +211,7 @@ public class ServiceIAB extends IAB {
         }
 
         Intent purchaseIntent = buyIntentBundle.getParcelable(RESPONSE_BUY_INTENT);
-        logger.logDebug("Launching buy intent for " + sku);
+        IABLogger.logDebug("Launching buy intent for " + sku);
         mPurchaseListener = listener;
         mPurchasingItemType = itemType;
 
@@ -235,7 +235,7 @@ public class ServiceIAB extends IAB {
         Bundle buyIntentBundle = mService.getBuyIntent(apiVersion, packageName, sku, itemType, extraData);
         int response = getResponseCodeFromBundle(buyIntentBundle);
         if (response != BILLING_RESPONSE_RESULT_OK) {
-            logger.logError("Unable to buy item, Error response: " + getResponseDesc(response));
+            IABLogger.logError("Unable to buy item, Error response: " + getResponseDesc(response));
             flagEndAsync();
             IabResult result = new IabResult(response, "Unable to buy item");
             if (listener != null) {
@@ -246,7 +246,7 @@ public class ServiceIAB extends IAB {
 
 
         PendingIntent pendingIntent = buyIntentBundle.getParcelable(RESPONSE_BUY_INTENT);
-        logger.logDebug("Launching buy intent for " + sku);
+        IABLogger.logDebug("Launching buy intent for " + sku);
         mPurchaseListener = listener;
         mPurchasingItemType = itemType;
 
@@ -262,17 +262,17 @@ public class ServiceIAB extends IAB {
             String token = itemInfo.getToken();
             String sku = itemInfo.getSku();
             if (token == null || token.equals("")) {
-                logger.logError("Can't consume " + sku + ". No token.");
+                IABLogger.logError("Can't consume " + sku + ". No token.");
                 throw new IabException(IABHELPER_MISSING_TOKEN, "PurchaseInfo is missing token for sku: "
                         + sku + " " + itemInfo);
             }
 
-            logger.logDebug("Consuming sku: " + sku + ", token: " + token);
+            IABLogger.logDebug("Consuming sku: " + sku + ", token: " + token);
             int response = mService.consumePurchase(apiVersion, context.getPackageName(), token);
             if (response == BILLING_RESPONSE_RESULT_OK) {
-                logger.logDebug("Successfully consumed sku: " + sku);
+                IABLogger.logDebug("Successfully consumed sku: " + sku);
             } else {
-                logger.logDebug("Error consuming consuming sku " + sku + ". " + getResponseDesc(response));
+                IABLogger.logDebug("Error consuming consuming sku " + sku + ". " + getResponseDesc(response));
                 throw new IabException(response, "Error consuming sku " + sku);
             }
         } catch (RemoteException e) {
@@ -300,19 +300,19 @@ public class ServiceIAB extends IAB {
                 operation + ") because another async operation(" + mAsyncOperation + ") is in progress.");
         mAsyncOperation = operation;
         mAsyncInProgress = true;
-        logger.logDebug("Starting async operation: " + operation);
+        IABLogger.logDebug("Starting async operation: " + operation);
     }
 
     @Override
     public void flagEndAsync() {
-        logger.logDebug("Ending async operation: " + mAsyncOperation);
+        IABLogger.logDebug("Ending async operation: " + mAsyncOperation);
         mAsyncOperation = "";
         mAsyncInProgress = false;
     }
 
     @Override
     public void dispose(Context context) {
-        logger.logDebug("Unbinding from service.");
+        IABLogger.logDebug("Unbinding from service.");
         if (context != null && mService != null) {
             context.unbindService(mServiceConn);
         }
