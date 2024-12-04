@@ -213,7 +213,7 @@ public class IabHelper {
             return;
         }
 
-        ServiceIAB serviceIAB = new ServiceIAB(getMarketId(), getBindAddress(), mSignatureBase64);
+        ServiceIAB serviceIAB = new ServiceIAB(getMarketId(mContext), getBindAddress(), mSignatureBase64);
 
         OnServiceConnectListener connectListener = new OnServiceConnectListener() {
             @Override
@@ -234,7 +234,7 @@ public class IabHelper {
     private void startAlternativeScenario(final OnIabSetupFinishedListener listener) {
         OnBroadCastConnectListener broadCastConnectListener = () -> checkBillingSupported(listener);
 
-        BroadcastIAB broadcastIAB = new BroadcastIAB(mContext, getMarketId(), getBindAddress(), mSignatureBase64);
+        BroadcastIAB broadcastIAB = new BroadcastIAB(mContext, getMarketId(mContext), getBindAddress(), mSignatureBase64);
         boolean canConnectToReceiver = broadcastIAB.connect(mContext, broadCastConnectListener);
         IABLogger.logDebug("canConnectToReceiver = " + canConnectToReceiver);
         if (canConnectToReceiver) {
@@ -561,10 +561,10 @@ public class IabHelper {
 
     int queryPurchases(Inventory inv, String itemType) throws JSONException, RemoteException {
         // Query purchases
-        logger.logDebug("Querying owned items, item type: " + itemType);
-        logger.logDebug("Package name: " + mContext.getPackageName());
+        IABLogger.logDebug("Querying owned items, item type: " + itemType);
+        IABLogger.logDebug("Package name: " + mContext.getPackageName());
         if (isMyketNotInstalled()) {
-            logger.logDebug("GetPurchases: Myket not installed, return empty list");
+            IABLogger.logDebug("GetPurchases: Myket not installed, return empty list");
             return 0;
         }
 
@@ -628,9 +628,9 @@ public class IabHelper {
 
     int querySkuDetails(String itemType, Inventory inv, List<String> moreSkus)
             throws RemoteException, JSONException {
-        logger.logDebug("Querying SKU details.");
+        IABLogger.logDebug("Querying SKU details.");
         if (isMyketNotInstalled()) {
-            logger.logDebug("SkuDetails: Myket not installed, return empty list");
+            IABLogger.logDebug("SkuDetails: Myket not installed, return empty list");
             return 0;
         }
 

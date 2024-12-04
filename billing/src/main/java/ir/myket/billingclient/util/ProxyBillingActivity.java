@@ -29,7 +29,7 @@ public class ProxyBillingActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        iabLogger.logDebug("Launching Store billing flow");
+        IABLogger.logDebug("Launching Store billing flow");
         setRequestedOrientation(
                 getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE ?
                         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE :
