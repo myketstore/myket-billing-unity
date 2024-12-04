@@ -48,17 +48,21 @@ public class ServiceIAB extends IAB {
     // if mAsyncInProgress == true, what asynchronous operation is in progress?
     private String mAsyncOperation = "";
 
+    private final ServiceIAB myIabService;
+
     public ServiceIAB(String packageName, String bindAddress, String mSignatureBase64) {
         super(packageName, bindAddress, mSignatureBase64);
+        myIabService = this;
     }
 
     public void connect(Context context, final OnServiceConnectListener listener) {
         IABLogger.logDebug("Starting in-app billing setup.");
         mServiceConn = new ServiceConnection() {
             @Override
-            public void onServiceDisconnected(final ComponentName name) {
+            public void onServiceDisconnected(final ComponentName name)
+            {
                 IABLogger.logDebug("Billing service disconnected.");
-                mService = null;
+                listener.disconnected(myIabService);
             }
 
             @Override

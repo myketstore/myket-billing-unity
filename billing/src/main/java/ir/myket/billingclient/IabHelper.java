@@ -225,6 +225,18 @@ public class IabHelper {
             public void couldNotConnect() {
                 startAlternativeScenario(listener);
             }
+
+            @Override
+            public void disconnected(IAB iabService)
+            {
+                //dispose current connection and helper
+                if(iabConnection == iabService)
+                {
+                    dispose();
+
+                    listener.onServiceDisconnected();
+                }
+            }
         };
 
         iabConnection = serviceIAB;
@@ -821,6 +833,8 @@ public class IabHelper {
          * @param result The result of the setup process.
          */
         void onIabSetupFinished(IabResult result);
+
+        public void onServiceDisconnected();
     }
 
 
