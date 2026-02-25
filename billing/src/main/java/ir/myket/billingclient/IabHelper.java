@@ -236,7 +236,7 @@ public class IabHelper {
         OnServiceConnectListener connectListener = new OnServiceConnectListener() {
             @Override
             public void connected() {
-                checkBillingSupported(listener);
+                checkBillingSupported(listener, false);
             }
 
             @Override
@@ -255,7 +255,7 @@ public class IabHelper {
     }
 
     private void startAlternativeScenario(final OnIabSetupFinishedListener listener) {
-        OnBroadCastConnectListener broadCastConnectListener = () -> checkBillingSupported(listener);
+        OnBroadCastConnectListener broadCastConnectListener = () -> checkBillingSupported(listener, true);
 
         BroadcastIAB broadcastIAB = new BroadcastIAB(mContext, getMarketId(mContext), getBindAddress(), mSignatureBase64);
         boolean canConnectToReceiver = broadcastIAB.connect(mContext, broadCastConnectListener);
@@ -297,9 +297,22 @@ public class IabHelper {
         }
     }
 
-    private void checkBillingSupported(final OnIabSetupFinishedListener listener) {
+    private void checkBillingSupported(final OnIabSetupFinishedListener listener, boolean broadcastScenario) {
         String packageName = mContext.getPackageName();
-        iabConnection.isBillingSupported(3, packageName, new BillingSupportCommunication() {
+		IAB connection = iabConnection;
+
+		if (connection == null) {
+			if (broadcastScenario) {
+				final IabResult iabResult = new IabResult(BILLING_RESPONSE_RESULT_BILLING_UNAVAILABLE,
+						"Billing unavailable (broadcast fallback failed)");
+				listener.onIabSetupFinished(iabResult);
+			} else {
+				startAlternativeScenario(listener);
+			}
+			return;
+		}
+
+		connection.isBillingSupported(3, packageName, new BillingSupportCommunication() {
             @Override
             public void onBillingSupportResult(int response) {
 
